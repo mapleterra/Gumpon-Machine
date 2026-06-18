@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace GachaPlugin;
@@ -30,65 +31,40 @@ public class GachaPrize
 
 public class GachaGame
 {
-    public const int RollsNeeded = 3;
-    public const int RollMax = 20;
+    private readonly Configuration config;
+
+    public GachaGame(Configuration config)
+    {
+        this.config = config;
+    }
+
+    public int RollsNeeded => config.RollsNeeded;
+    public int RollMax => config.DiceSize;
+    public int MaxSum => RollsNeeded * RollMax;
 
     public GachaState State { get; private set; } = GachaState.Idle;
     public List<int> Rolls { get; private set; } = new();
     public GachaPrize? CurrentPrize { get; private set; }
-    public int RollsRemaining => RollsNeeded - Rolls.Count;
-    public int Sum => Rolls.Count > 0 ? Rolls[0] + (Rolls.Count > 1 ? Rolls[1] : 0) + (Rolls.Count > 2 ? Rolls[2] : 0) : 0;
+    public int RollsRemaining => Math.Max(0, RollsNeeded - Rolls.Count);
 
-    private static readonly List<GachaPrize> PrizeTable = new()
+    public int Sum
     {
-        new GachaPrize
+        get
         {
-            Tier = PrizeTier.Jackpot,
-            Name = "JACKPOT! Legendary Gachapon Capsule",
-            Description = "The rarest of all prizes. You are incredibly lucky!",
-            Emoji = "★",
-            Color = 0xFF00FFFF
-        },
-        new GachaPrize
-        {
-            Tier = PrizeTier.Legendary,
-            Name = "Legendary Gachapon Capsule",
-            Description = "An extraordinary pull! Something legendary awaits inside.",
-            Emoji = "◈",
-            Color = 0xFF00A5FF
-        },
-        new GachaPrize
-        {
-            Tier = PrizeTier.Epic,
-            Name = "Epic Gachapon Capsule",
-            Description = "A powerful pull! A rare and coveted prize.",
-            Emoji = "◆",
-            Color = 0xFFB000FF
-        },
-        new GachaPrize
-        {
-            Tier = PrizeTier.Rare,
-            Name = "Rare Gachapon Capsule",
-            Description = "Not bad! Something uncommon awaits.",
-            Emoji = "●",
-            Color = 0xFFFF7F00
-        },
-        new GachaPrize
-        {
-            Tier = PrizeTier.Uncommon,
-            Name = "Uncommon Gachapon Capsule",
-            Description = "A decent pull. Better luck next time!",
-            Emoji = "◉",
-            Color = 0xFF00FF00
-        },
-        new GachaPrize
-        {
-            Tier = PrizeTier.Common,
-            Name = "Common Gachapon Capsule",
-            Description = "The most common of prizes. Keep trying!",
-            Emoji = "○",
-            Color = 0xFFAAAAAA
-        },
+            int s = 0;
+            foreach (var r in Rolls) s += r;
+            return s;
+        }
+    }
+
+    public static List<PrizeConfig> DefaultPrizes() => new()
+    {
+        new PrizeConfig { Tier = PrizeTier.Jackpot, Name = "JACKPOT! Legendary Gachapon Capsule", Description = "The rarest of all prizes. You are incredibly lucky!", Emoji = "★" },
+        new PrizeConfig { Tier = PrizeTier.Legendary, Name = "Legendary Gachapon Capsule", Description = "An extraordinary pull! Something legendary awaits inside.", Emoji = "◈" },
+        new PrizeConfig { Tier = PrizeTier.Epic, Name = "Epic Gachapon Capsule", Description = "A powerful pull! A rare and coveted prize.", Emoji = "◆" },
+        new PrizeConfig { Tier = PrizeTier.Rare, Name = "Rare Gachapon Capsule", Description = "Not bad! Something uncommon awaits.", Emoji = "●" },
+        new PrizeConfig { Tier = PrizeTier.Uncommon, Name = "Uncommon Gachapon Capsule", Description = "A decent pull. Better luck next time!", Emoji = "◉" },
+        new PrizeConfig { Tier = PrizeTier.Common, Name = "Common Gachapon Capsule", Description = "The most common of prizes. Keep trying!", Emoji = "○" },
     };
 
     public void StartGame()
@@ -114,25 +90,50 @@ public class GachaGame
 
         if (Rolls.Count >= RollsNeeded)
         {
-            CurrentPrize = DeterminePrize(Sum);
+            CurrentPrize = GetPrizeForSum(Sum);
             State = GachaState.Complete;
         }
 
         return true;
     }
 
-    private static GachaPrize DeterminePrize(int sum)
+    private static int Cut(int pct, int max) => (int)Math.Ceiling(pct / 100.0 * max);
+
+    public PrizeTier GetTierForSum(int sum)
     {
-        return sum switch
+        int max = MaxSum;
+        if (sum >= max) return PrizeTier.Jackpot;
+        if (sum >= Cut(config.LegendaryThresholdPct, max)) return PrizeTier.Legendary;
+        if (sum >= Cut(config.EpicThresholdPct, max)) return PrizeTier.Epic;
+        if (sum >= Cut(config.RareThresholdPct, max)) return PrizeTier.Rare;
+        if (sum >= Cut(config.UncommonThresholdPct, max)) return PrizeTier.Uncommon;
+        return PrizeTier.Common;
+    }
+
+    public GachaPrize GetPrizeForSum(int sum)
+    {
+        var tier = GetTierForSum(sum);
+        var pc = config.GetPrize(tier);
+        return new GachaPrize
         {
-            60 => PrizeTable[0],
-            >= 51 => PrizeTable[1],
-            >= 36 => PrizeTable[2],
-            >= 21 => PrizeTable[3],
-            >= 11 => PrizeTable[4],
-            _ => PrizeTable[5]
+            Tier = tier,
+            Name = pc.Name,
+            Description = pc.Description,
+            Emoji = pc.Emoji,
+            Color = 0xFFFFFFFF
         };
     }
+
+    public int ThresholdSum(PrizeTier tier) => tier switch
+    {
+        PrizeTier.Jackpot => MaxSum,
+        PrizeTier.Legendary => Cut(config.LegendaryThresholdPct, MaxSum),
+        PrizeTier.Epic => Cut(config.EpicThresholdPct, MaxSum),
+        PrizeTier.Rare => Cut(config.RareThresholdPct, MaxSum),
+        PrizeTier.Uncommon => Cut(config.UncommonThresholdPct, MaxSum),
+        PrizeTier.Common => RollsNeeded,
+        _ => 0
+    };
 
     public static string GetTierDisplayName(PrizeTier tier) => tier switch
     {
