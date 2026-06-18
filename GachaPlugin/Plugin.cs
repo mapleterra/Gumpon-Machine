@@ -22,7 +22,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
-    [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
+    [PluginService] internal static IClientState ClientState { get; private set; } = null!;
 
     public Configuration Config { get; init; }
 
@@ -87,13 +87,12 @@ public sealed class Plugin : IDalamudPlugin
             mainWindow.IsOpen = true;
     }
 
-    private void OnChatMessage(IHandleableChatMessage message)
+    private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
     {
-        var type = message.LogKind;
         if (type != XivChatType.SystemMessage && (int)type != 2122)
             return;
 
-        var text = message.Message.TextValue;
+        var text = message.TextValue;
         var match = DiceRollRegex.Match(text);
         if (!match.Success)
             return;
@@ -105,7 +104,7 @@ public sealed class Plugin : IDalamudPlugin
             return;
 
         var rollerName = match.Groups["name"].Value.Trim();
-        var localName = PlayerState.IsLoaded ? PlayerState.CharacterName : null;
+        var localName = ClientState.LocalPlayer?.Name?.TextValue;
 
         bool isLocal = rollerName.Equals("You", StringComparison.OrdinalIgnoreCase)
             || (!string.IsNullOrEmpty(localName) && rollerName.Equals(localName, StringComparison.OrdinalIgnoreCase));
@@ -149,7 +148,7 @@ public sealed class Plugin : IDalamudPlugin
     private void FinalizeLocalGame()
     {
         var prize = game.CurrentPrize!;
-        var localName = PlayerState.IsLoaded ? PlayerState.CharacterName : "You";
+        var localName = ClientState.LocalPlayer?.Name?.TextValue ?? "You";
 
         Config.TotalGachaPulls++;
         Config.RecordTier(prize.Tier);
