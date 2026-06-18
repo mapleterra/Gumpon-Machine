@@ -1,3 +1,4 @@
+using Dalamud.Game.Chat;
 using Dalamud.Game.Command;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
@@ -20,7 +21,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
-    [PluginService] internal static IClientState ClientState { get; private set; } = null!;
+    [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
 
     public Configuration Config { get; init; }
     private readonly GachaGame game;
@@ -71,15 +72,16 @@ public sealed class Plugin : IDalamudPlugin
         mainWindow.IsOpen = true;
     }
 
-    private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
+    private void OnChatMessage(IHandleableChatMessage message)
     {
         if (game.State != GachaState.WaitingForRolls)
             return;
 
+        var type = message.LogKind;
         if (type != XivChatType.SystemMessage && (int)type != 2122)
             return;
 
-        var text = message.TextValue;
+        var text = message.Message.TextValue;
         var match = DiceRollRegex.Match(text);
 
         if (!match.Success)
@@ -91,8 +93,8 @@ public sealed class Plugin : IDalamudPlugin
         if (!int.TryParse(match.Groups[1].Value, out var roll))
             return;
 
-        var localPlayerName = ClientState.LocalPlayer?.Name?.TextValue;
-        var senderName = sender.TextValue;
+        var localPlayerName = PlayerState.IsLoaded ? PlayerState.CharacterName : null;
+        var senderName = message.Sender.TextValue;
 
         if (!string.IsNullOrEmpty(localPlayerName) && !string.IsNullOrEmpty(senderName))
         {
