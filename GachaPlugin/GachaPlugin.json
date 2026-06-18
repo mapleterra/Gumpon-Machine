@@ -1,0 +1,13 @@
+{
+  "Author": "your name here",
+  "Name": "Gachapon Machine",
+  "Punchline": "Roll /random 20 three times and win a prize!",
+  "Description": "A gachapon gambling minigame. Type /gachapon to open the machine, then roll /random 20 three times — the sum of your rolls (3-60) decides your prize tier, from Common all the way up to the JACKPOT.",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "fun",
+    "game",
+    "gacha",
+    "random"
+  ]
+}

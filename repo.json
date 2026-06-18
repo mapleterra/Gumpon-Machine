@@ -1,0 +1,24 @@
+[
+  {
+    "Author": "mapleterra",
+    "Name": "Gachapon Machine",
+    "InternalName": "GachaPlugin",
+    "AssemblyVersion": "1.0.0.0",
+    "Description": "A gachapon gambling minigame. Type /gachapon to open the machine, then roll /random 20 three times — the sum of your rolls (3-60) decides your prize tier, from Common all the way up to the JACKPOT.",
+    "Punchline": "Roll /random 20 three times and win a prize!",
+    "ApplicableVersion": "any",
+    "RepoUrl": "https://github.com/mapleterra/Gumpon-Machine",
+    "Tags": [
+      "fun",
+      "game",
+      "gacha",
+      "random"
+    ],
+    "DalamudApiLevel": 15,
+    "IconUrl": "https://raw.githubusercontent.com/mapleterra/Gumpon-Machine/main/Data/icon.png",
+    "DownloadLinkInstall": "https://github.com/mapleterra/Gumpon-Machine/releases/latest/download/latest.zip",
+    "DownloadLinkUpdate": "https://github.com/mapleterra/Gumpon-Machine/releases/latest/download/latest.zip",
+    "DownloadLinkTesting": "https://github.com/mapleterra/Gumpon-Machine/releases/latest/download/latest.zip",
+    "DownloadCount": 0
+  }
+]
