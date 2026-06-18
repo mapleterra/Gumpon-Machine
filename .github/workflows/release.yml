@@ -32,23 +32,15 @@ jobs:
     - name: Package plugin as latest.zip
       shell: pwsh
       run: |
-        $src = ".\GachaPlugin\bin\x64\Release\GachaPlugin"
-        if (-not (Test-Path $src)) {
-          Write-Host "::error::Build output folder not found: $src"
+        $zip = Get-ChildItem -Path .\GachaPlugin\bin -Recurse -Filter latest.zip -ErrorAction SilentlyContinue | Select-Object -First 1
+        if (-not $zip) {
+          Write-Host "::error::latest.zip not found under .\GachaPlugin\bin"
           Get-ChildItem -Path .\GachaPlugin\bin -Recurse -ErrorAction SilentlyContinue | Select-Object FullName | Out-String | Write-Host
           exit 1
         }
+        Write-Host "Found plugin package: $($zip.FullName)"
         New-Item -ItemType Directory -Force -Path dist | Out-Null
-        $existing = Get-ChildItem -Path $src -Filter *.zip -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($existing) {
-          Write-Host "Using SDK-produced zip: $($existing.FullName)"
-          Copy-Item $existing.FullName -Destination dist\latest.zip -Force
-        } else {
-          Write-Host "Zipping build output from $src"
-          Compress-Archive -Path "$src\*" -DestinationPath dist\latest.zip -Force
-        }
-        Write-Host "Created package:"
-        Get-ChildItem dist\latest.zip | Select-Object FullName, Length | Format-Table -AutoSize | Out-String | Write-Host
+        Copy-Item $zip.FullName -Destination dist\latest.zip -Force
 
     - name: Create / update GitHub Release
       uses: softprops/action-gh-release@v2
