@@ -1,3 +1,4 @@
+using Dalamud.Game.Chat;
 using Dalamud.Game.Command;
 using Dalamud.Game.Text;
 using Dalamud.Game.Text.SeStringHandling;
@@ -22,7 +23,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static ICommandManager CommandManager { get; private set; } = null!;
     [PluginService] internal static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
-    [PluginService] internal static IClientState ClientState { get; private set; } = null!;
+    [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
 
     public Configuration Config { get; init; }
 
@@ -87,12 +88,13 @@ public sealed class Plugin : IDalamudPlugin
             mainWindow.IsOpen = true;
     }
 
-    private void OnChatMessage(XivChatType type, int timestamp, ref SeString sender, ref SeString message, ref bool isHandled)
+    private void OnChatMessage(IHandleableChatMessage message)
     {
+        var type = message.LogKind;
         if (type != XivChatType.SystemMessage && (int)type != 2122)
             return;
 
-        var text = message.TextValue;
+        var text = message.Message.TextValue;
         var match = DiceRollRegex.Match(text);
         if (!match.Success)
             return;
@@ -104,7 +106,7 @@ public sealed class Plugin : IDalamudPlugin
             return;
 
         var rollerName = match.Groups["name"].Value.Trim();
-        var localName = ClientState.LocalPlayer?.Name?.TextValue;
+        var localName = PlayerState.IsLoaded ? PlayerState.CharacterName : null;
 
         bool isLocal = rollerName.Equals("You", StringComparison.OrdinalIgnoreCase)
             || (!string.IsNullOrEmpty(localName) && rollerName.Equals(localName, StringComparison.OrdinalIgnoreCase));
@@ -148,7 +150,7 @@ public sealed class Plugin : IDalamudPlugin
     private void FinalizeLocalGame()
     {
         var prize = game.CurrentPrize!;
-        var localName = ClientState.LocalPlayer?.Name?.TextValue ?? "You";
+        var localName = PlayerState.IsLoaded ? PlayerState.CharacterName : "You";
 
         Config.TotalGachaPulls++;
         Config.RecordTier(prize.Tier);
