@@ -1,3 +1,4 @@
+# Builds the plugin on a version tag (e.g. v1.0.0.0) and publishes latest.zip to a GitHub Release.
 name: Release Gachapon Machine
 
 on:
@@ -11,9 +12,6 @@ jobs:
   release:
     runs-on: windows-2022
 
-    env:
-      PLUGIN_NAME: GachaPlugin
-
     steps:
     - name: Checkout
       uses: actions/checkout@v5
@@ -25,16 +23,37 @@ jobs:
 
     - name: Download Dalamud
       run: |
-        Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile latest.zip
-        Expand-Archive -Force latest.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
+        Invoke-WebRequest -Uri https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile dalamud.zip
+        Expand-Archive -Force dalamud.zip "$env:AppData\XIVLauncher\addon\Hooks\dev"
 
     - name: Build (Release)
       run: dotnet build --configuration Release
 
+    - name: Package plugin as latest.zip
+      shell: pwsh
+      run: |
+        $src = ".\GachaPlugin\bin\x64\Release\GachaPlugin"
+        if (-not (Test-Path $src)) {
+          Write-Host "::error::Build output folder not found: $src"
+          Get-ChildItem -Path .\GachaPlugin\bin -Recurse -ErrorAction SilentlyContinue | Select-Object FullName | Out-String | Write-Host
+          exit 1
+        }
+        New-Item -ItemType Directory -Force -Path dist | Out-Null
+        $existing = Get-ChildItem -Path $src -Filter *.zip -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($existing) {
+          Write-Host "Using SDK-produced zip: $($existing.FullName)"
+          Copy-Item $existing.FullName -Destination dist\latest.zip -Force
+        } else {
+          Write-Host "Zipping build output from $src"
+          Compress-Archive -Path "$src\*" -DestinationPath dist\latest.zip -Force
+        }
+        Write-Host "Created package:"
+        Get-ChildItem dist\latest.zip | Select-Object FullName, Length | Format-Table -AutoSize | Out-String | Write-Host
+
     - name: Create / update GitHub Release
       uses: softprops/action-gh-release@v2
       with:
-        files: .\${{ env.PLUGIN_NAME }}\bin\x64\Release\${{ env.PLUGIN_NAME }}\latest.zip
+        files: dist/latest.zip
         fail_on_unmatched_files: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
