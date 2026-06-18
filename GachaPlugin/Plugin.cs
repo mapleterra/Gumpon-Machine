@@ -90,10 +90,10 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnChatMessage(IHandleableChatMessage message)
     {
-        var type = message.LogKind;
-        if (type != XivChatType.SystemMessage && (int)type != 2122)
-            return;
-
+        // The /random (and /dice) result is a game-generated system message. Its exact
+        // XivChatType can differ between your own roll and other players' rolls, so we do
+        // NOT gate on chat type — the highly specific "Random! ... rolls a N (out of M)"
+        // text matched below is what reliably identifies a real roll.
         var text = message.Message.TextValue;
         var match = DiceRollRegex.Match(text);
         if (!match.Success)
@@ -111,7 +111,7 @@ public sealed class Plugin : IDalamudPlugin
         bool isLocal = rollerName.Equals("You", StringComparison.OrdinalIgnoreCase)
             || (!string.IsNullOrEmpty(localName) && rollerName.Equals(localName, StringComparison.OrdinalIgnoreCase));
 
-        Log.Debug($"[GachaPlugin] Roll detected: name='{rollerName}' roll={roll}/{max} local={isLocal}");
+        Log.Debug($"[GachaPlugin] Roll detected: name='{rollerName}' roll={roll}/{max} local={isLocal} chatType={(int)message.LogKind}");
 
         // Party tracking: record everyone (including the local player) when enabled.
         if (Config.PartyMode)
@@ -126,8 +126,20 @@ public sealed class Plugin : IDalamudPlugin
         }
 
         // The animated machine only advances on the local player's rolls.
-        if (isLocal && game.State == GachaState.WaitingForRolls)
+        if (isLocal)
         {
+            // Typing /random automatically inserts a coin and starts a pull when one
+            // isn't already running, so players don't have to open the window and click
+            // "Insert Coin" before rolling.
+            if (game.State is GachaState.Idle or GachaState.Complete)
+            {
+                game.StartGame();
+                mainWindow.IsOpen = true;
+            }
+
+            if (game.State != GachaState.WaitingForRolls)
+                return;
+
             if (!game.RegisterRoll(roll))
                 return;
 
