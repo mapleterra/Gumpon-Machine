@@ -3,7 +3,7 @@
     "Author": "mapleterra",
     "Name": "Gachapon Machine",
     "InternalName": "GachaPlugin",
-    "AssemblyVersion": "1.0.1.0",
+    "AssemblyVersion": "1.0.1.3",
     "Description": "A gachapon gambling minigame. Type /gachapon to open the machine, then roll /random to play — the sum of your rolls decides your prize tier, from Common up to the JACKPOT. Includes a pull history log, detailed stats (best sum, win streaks, luckiest day), fully customizable prizes and rules, jackpot sound effects, gil/payout tracking, and a party mode that tracks everyone's rolls on a leaderboard.",
     "Punchline": "Roll /random and win a prize — now with history, stats, custom prizes, sound, and party mode!",
     "ApplicableVersion": "any",
